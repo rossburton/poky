@@ -140,7 +140,16 @@ def get_tests_list(d, type="runtime"):
     for testname in testsuites:
         if testname != "auto":
             if testname.startswith("oeqa."):
-                testslist.append(testname)
+                for p in bbpath:
+                    test_location = os.path.join(p, 'lib', os.sep.join(testname.split('.')))
+                    if os.path.isfile(test_location+".py") or \
+                        (os.path.isfile(test_location.rsplit(os.sep, 1)[0]+".py")) or \
+                        (os.path.isfile(test_location.rsplit(os.sep, 2)[0]+".py")):
+                        testslist.append(testname)
+                    elif os.path.isdir(test_location):
+                        for files in os.listdir(test_location):
+                            if (files.endswith(".py")) and not files.startswith("_"):
+                                testslist.append(testname+'.'+files.split('.')[0])
                 continue
             found = False
             for p in bbpath:
