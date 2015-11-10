@@ -138,6 +138,12 @@ def main():
         for test in tc.testslist:
             print test
     else:
+        for index, test in enumerate(tc.testslist):
+            if os.path.isdir(os.sep.join(test.split('.'))):
+                del tc.testslist[index]
+                for files in os.listdir(os.sep.join(test.split('.'))):
+                    if (files.endswith(".py")) and not files.startswith("_"):
+                        tc.testslist.insert(index, test+'.'+files.split('.')[0])
         target.exportStart()
         runTests(tc)
 
