@@ -92,6 +92,12 @@ def main():
 
     args = parser.parse_args()
 
+    if os.path.isdir("extralayers"):
+        extrapaths = [x[0] for x in os.walk('extralayers')]
+        for path in extrapaths:
+            if os.path.isdir(os.path.join(path,"oeqa")) and (os.path.join(path,"oeqa") not in sys.path):
+                sys.path.append(os.path.abspath(path))
+
     with open(args.json, "r") as f:
         loaded = json.load(f)
 
@@ -144,6 +150,14 @@ def main():
                 for files in os.listdir(os.sep.join(test.split('.'))):
                     if (files.endswith(".py")) and not files.startswith("_"):
                         tc.testslist.insert(index, test+'.'+files.split('.')[0])
+            elif not os.path.isfile(os.path.join(os.sep.join(test.split('.')), '.py')):
+                for testpath in sys.path:
+                    directory = os.path.join(testpath, os.sep.join(test.split('.')))
+                    if os.path.isdir(directory):
+                        del tc.testslist[index]
+                        for files in os.listdir(directory):
+                            if (files.endswith(".py")) and not files.startswith("_"):
+                                tc.testslist.insert(index, test+'.'+files.split('.')[0])
         target.exportStart()
         runTests(tc)
 
