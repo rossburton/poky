@@ -22,6 +22,9 @@ import sys
 import os
 import time
 import argparse
+import re
+
+from oeqa.utils.testsexport import get_dest_folder
 
 try:
     import simplejson as json
@@ -88,9 +91,12 @@ def main():
             the current dir is used. This is used for usually creating a ssh log file and a scp test file.")
     parser.add_argument("--list-tests", dest="list_tests", help="This lists the current TEST_SUITES that will be run.", action='store_true')
     parser.add_argument("-r","--run-tests", dest="run_tests", help="Overwrite TEST_SUITES from the json file with custom list of tests.", nargs = '*')
+    parser.add_argument("-m","--machine", dest="machine", help="Overwrite MACHINE from the json file ")
     parser.add_argument("json", help="The json file exported by the build system", default="testdata.json", nargs='?')
 
     args = parser.parse_args()
+
+    os.environ["bin_dir"] = os.path.join(os.getcwd(), "binaries") # exporting bin_dir path
 
     if os.path.isdir("extralayers"):
         extrapaths = [x[0] for x in os.walk('extralayers')]
@@ -136,6 +142,22 @@ def main():
     for key in loaded.keys():
         if key != "d" and key != "target" and key != "host_dumper":
             setattr(tc, key, loaded[key])
+
+    if args.machine:
+        d['MACHINE'] = args.machine
+        bin_dir = os.getenv("bin_dir")
+        found = False
+        if os.path.exists(bin_dir):
+            for item in os.listdir(bin_dir):
+                if not re.search("native", item) and os.path.exists(os.path.join(bin_dir, item, "mapping.cfg")):
+                    with open(os.path.join(bin_dir, item, "mapping.cfg"), "r") as mapping_file:
+                        mapping = eval(mapping_file.read())
+                        if args.machine in mapping.keys():
+                            d['TARGET_SYS'] = mapping[args.machine][0]
+                            d['TUNE_FEATURES'] = mapping[args.machine][1]
+                            found = True
+        if not found:
+            print("WARNING: Cannot find binaries for provided machine %s." % args.machine)
 
     if args.run_tests:
         tc.testslist = args.run_tests
