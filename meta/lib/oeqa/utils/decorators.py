@@ -12,7 +12,9 @@ import sys
 import unittest
 import threading
 import signal
+import re
 from functools import wraps
+import testexport as te
 
 #get the "result" object from one of the upper frames provided that one of these upper frames is a unittest.case frame
 class getResults(object):
@@ -260,3 +262,49 @@ def timeout_handler(seconds):
         else:
             return fn
     return decorator
+
+class TestNeedsBin(object):
+    """
+    This decorator provides binary support for test cases
+    """
+    def __init__(self, *args):
+        self.params_list = list()
+        self. clean_list = list()
+        if args:# these are tuples of values
+            for param_tuple in args:
+                bn,bv,t, p,rm_b = ("", "", "", "", "")
+                for index,value in enumerate(param_tuple):
+                    if index == 0:
+                        bn = value
+                    elif index == 1 and re.match("[0-9]+\.",value):
+                        bv = value
+                    elif value == "rpm":
+                        p = value
+                    elif value == "native":
+                        t = value
+                    elif value == "rm":
+                        rm_b = value
+                self.params_list.append("%s_%s_%s_%s_%s" % (bn, bv, p, t, rm_b))
+
+    def deploy_binary(self, params):
+        from oeqa.oetest import oeRuntimeTest
+        p = params.split("_")
+        if p[3] == "native":
+            te.process_binaries(oeRuntimeTest.tc.d, params)
+        else:
+            status = te.process_binaries(oeRuntimeTest.tc.d, params)
+            if status:
+                bin_to_rm = te.send_bin_to_DUT(oeRuntimeTest.tc.d, params)
+                if bin_to_rm:
+                    self.clean_list.extend(bin_to_rm)
+                    
+    def __call__(self, func):
+        def wrapped_f(*args):
+            for item in set(self.params_list):
+                self.deploy_binary(item)
+            func(*args)
+            te.rm_bin(self.clean_list) # used to remove sent binaries 
+            return
+        wrapped_f.__name__ = func.__name__
+        return wrapped_f
+
