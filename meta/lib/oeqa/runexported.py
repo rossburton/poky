@@ -24,7 +24,7 @@ import time
 import argparse
 import re
 
-from oeqa.utils.testsexport import get_dest_folder
+from oeqa.utils.testexport import get_dest_folder
 
 try:
     import simplejson as json
